@@ -30,6 +30,7 @@ class ItemBasedCF:
         k: int = config.ITEM_NEIGHBORS_K,
         shrinkage: float = config.SIMILARITY_SHRINKAGE,
         item_mean_damping: float = config.ITEM_MEAN_DAMPING,
+        prediction_damping: float = config.ITEM_PREDICTION_DAMPING,
         min_neighbors: int = config.MIN_NEIGHBORS,
         min_rating: float = config.MIN_RATING,
         max_rating: float = config.MAX_RATING,
@@ -37,6 +38,7 @@ class ItemBasedCF:
         self.k = k
         self.shrinkage = shrinkage
         self.item_mean_damping = item_mean_damping
+        self.prediction_damping = prediction_damping
         self.min_neighbors = min_neighbors
         self.min_rating = min_rating
         self.max_rating = max_rating
@@ -88,16 +90,26 @@ class ItemBasedCF:
 
     # ------------------------------------------------------------------ core scorer
     def _score(self, rating_vec: np.ndarray, rated_mask: np.ndarray) -> np.ndarray:
-        """Predicted rating for every movie given one user's (possibly temporary) profile."""
+        """Predicted ratings clipped to the valid range (used for evaluation and display)."""
+        return np.clip(self._raw_score(rating_vec, rated_mask), self.min_rating, self.max_rating)
+
+    def _raw_score(self, rating_vec: np.ndarray, rated_mask: np.ndarray) -> np.ndarray:
+        """UNCLIPPED prediction for every movie given one user's (possibly temporary) profile.
+
+        The weighted deviation is divided by (sum of similarities + damping) instead of the plain sum,
+        so a prediction backed by only a little evidence stays close to the movie's average instead of
+        jumping to the 5.0 ceiling. Ranking uses these raw values, so nothing ties at the ceiling.
+        """
         deviation = (rating_vec - self.item_means_) * rated_mask         # how the user differs from the crowd
         weights = self.neighbor_sim_ * rated_mask[self.neighbor_idx_]     # only neighbours the user has rated
         numerator = (weights * deviation[self.neighbor_idx_]).sum(axis=1)
         denominator = weights.sum(axis=1)                                 # sims are >= 0 so == sum |sim|
         support = (weights > 0).sum(axis=1)
-        ratio = np.divide(numerator, denominator, out=np.full_like(numerator, np.nan), where=denominator > 1e-9)
+        damping = getattr(self, "prediction_damping", config.ITEM_PREDICTION_DAMPING)  # older saved models lack it
+        ratio = np.divide(numerator, denominator + damping, out=np.full_like(numerator, np.nan), where=denominator > 1e-9)
         pred = self.item_means_ + ratio
         pred[support < self.min_neighbors] = np.nan
-        return np.clip(pred, self.min_rating, self.max_rating)
+        return pred
 
     def predict_pairs(self, user_ids, movie_ids) -> np.ndarray:
         """Predict many (user, movie) pairs; NaN where impossible."""
@@ -115,8 +127,9 @@ class ItemBasedCF:
         scores = scores.copy()
         scores[rated_mask > 0] = np.nan                  # exclude already-watched movies
         scores[self.n_ratings_ < min_ratings] = np.nan   # exclude movies with thin evidence
-        positions = top_n_positions(scores, n)
-        return build_result_frame(self.catalog_, positions, scores[positions])
+        positions = top_n_positions(scores, n)  # order by the UNCLIPPED score, so no ties at the 5.0 ceiling
+        shown = np.clip(scores[positions], self.min_rating, self.max_rating)
+        return build_result_frame(self.catalog_, positions, shown)
 
     def recommend(
         self, user_id: int, n: int = config.TOP_N, min_ratings: int = config.MIN_RATINGS_TO_RECOMMEND
@@ -125,7 +138,7 @@ class ItemBasedCF:
         u = self.user_index_.get_indexer([user_id])[0]
         if u < 0:
             raise UnknownUserError(f"User {user_id} not found in the training data")
-        return self._rank(self._score(self.filled_[u], self.mask_[u]), self.mask_[u], n, min_ratings)
+        return self._rank(self._raw_score(self.filled_[u], self.mask_[u]), self.mask_[u], n, min_ratings)
 
     def profile_from_ratings(self, ratings: Mapping[int, float]) -> tuple[np.ndarray, np.ndarray]:
         """Turn {movieId: rating} into (rating_vector, mask_vector). Raises for unknown movies."""
@@ -144,7 +157,7 @@ class ItemBasedCF:
     ) -> pd.DataFrame:
         """Recommendations for a temporary (cold-start) profile; no userId is created."""
         vec, mask = self.profile_from_ratings(ratings)
-        return self._rank(self._score(vec, mask), mask, n, min_ratings)
+        return self._rank(self._raw_score(vec, mask), mask, n, min_ratings)
 
     def similar_movies(self, movie_id: int, n: int = config.TOP_N) -> pd.DataFrame:
         """The n most similar movies (by rating behaviour). Empty if the movie has no neighbours."""

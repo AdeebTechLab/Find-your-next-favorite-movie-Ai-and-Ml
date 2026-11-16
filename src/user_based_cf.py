@@ -68,8 +68,11 @@ class UserBasedCF:
         return self
 
     # ------------------------------------------------------------------ prediction
-    def _predict_row(self, user_pos: int) -> np.ndarray:
-        """Predicted rating for every movie for one user (NaN where not predictable)."""
+    def _predict_row(self, user_pos: int, clip: bool = True) -> np.ndarray:
+        """Predicted rating for every movie for one user (NaN where not predictable).
+
+        clip=False returns the raw values, which recommend() ranks by so nothing ties at the ceiling.
+        """
         nb, sims = self.neighbor_idx_[user_pos], self.neighbor_sim_[user_pos]
         numerator = sims @ self.centered_[nb]                            # sum sim * deviation
         denominator = np.abs(sims) @ self.mask_[nb]                      # sum |sim| over neighbours who rated i
@@ -77,7 +80,7 @@ class UserBasedCF:
         ratio = np.divide(numerator, denominator, out=np.full_like(numerator, np.nan), where=denominator > 1e-9)
         pred = self.user_means_[user_pos] + ratio
         pred[support < self.min_neighbors] = np.nan
-        return np.clip(pred, self.min_rating, self.max_rating)
+        return np.clip(pred, self.min_rating, self.max_rating) if clip else pred
 
     def predict_pairs(self, user_ids, movie_ids) -> np.ndarray:
         """Predict many (user, movie) pairs; NaN for unknown users/movies or unpredictable pairs."""
@@ -102,11 +105,12 @@ class UserBasedCF:
     ) -> pd.DataFrame:
         """Top-n unseen movies by predicted rating. Empty frame if nothing can be predicted."""
         u = self._user_position(user_id)
-        scores = self._predict_row(u)
+        scores = self._predict_row(u, clip=False)
         scores[self.mask_[u] > 0] = np.nan            # never recommend what the user already rated
         scores[self.n_ratings_ < min_ratings] = np.nan  # too little evidence about the movie
-        positions = top_n_positions(scores, n)
-        return build_result_frame(self.catalog_, positions, scores[positions])
+        positions = top_n_positions(scores, n)  # rank by the unclipped score
+        shown = np.clip(scores[positions], self.min_rating, self.max_rating)
+        return build_result_frame(self.catalog_, positions, shown)
 
     def similar_users(self, user_id: int, n: int = 5) -> pd.DataFrame:
         """The n nearest neighbours of a user with their similarity."""

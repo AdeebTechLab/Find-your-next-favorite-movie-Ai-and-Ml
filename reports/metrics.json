@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12T11:30:38+00:00",
+  "generated_at": "2026-11-16T10:36:08+00:00",
   "dataset": {
     "rows_in": 100836,
     "dropped_missing": 0,
@@ -39,8 +39,8 @@
     {
       "model": "Item-based CF",
       "subset": "all predictable",
-      "rmse": 0.8266057991223312,
-      "mae": 0.6299148661067278,
+      "rmse": 0.8298779576536395,
+      "mae": 0.6375964836455217,
       "coverage": 0.8514679627058124,
       "n_predicted": 17169,
       "n_test": 20164
@@ -66,8 +66,8 @@
     {
       "model": "Item-based CF",
       "subset": "common records",
-      "rmse": 0.8189224144913838,
-      "mae": 0.6238941280549355,
+      "rmse": 0.820542504202648,
+      "mae": 0.6300685149384941,
       "coverage": 0.7855088276135688,
       "n_predicted": 15839,
       "n_test": 20164

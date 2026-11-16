@@ -28,6 +28,7 @@ USER_NEIGHBORS_K = 50           # neighbours kept per user
 ITEM_NEIGHBORS_K = 50           # neighbours kept per movie
 SIMILARITY_SHRINKAGE = 10.0     # sim *= overlap / (overlap + shrinkage): distrusts tiny overlaps
 ITEM_MEAN_DAMPING = 5.0         # pulls item means with few ratings toward the global mean
+ITEM_PREDICTION_DAMPING = 0.5   # item-based: shrinks weak-evidence predictions toward the movie's mean (0 = off)
 MIN_NEIGHBORS = 2               # a prediction needs at least this many contributing neighbours
 
 # ---------------------------------------------------------------- recommendation rules

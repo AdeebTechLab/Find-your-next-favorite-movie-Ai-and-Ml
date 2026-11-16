@@ -137,3 +137,25 @@ def test_no_test_leakage_in_matrix(prepared):
     for row in test.head(50).itertuples():
         if row.userId in u and row.movieId in i:
             assert np.isnan(m.values[u.index(row.userId), i.index(row.movieId)])
+
+
+def test_cold_start_top_scores_do_not_all_tie_at_the_ceiling(item_cf):
+    recs = item_cf.recommend_from_ratings({100: 5, 101: 5, 102: 5, 103: 5, 104: 5}, n=10)
+    assert len(recs) > 1
+    assert recs.predicted_rating.nunique() > 1          # bars differ
+    assert recs.predicted_rating.is_monotonic_decreasing
+
+
+def test_ranking_uses_unclipped_scores(item_cf):
+    # With damping off, many items clip at 5.0; with damping on, fewer do (weak evidence is shrunk)
+    ratings = {100: 5, 101: 5, 102: 5, 103: 5, 104: 5}
+    vec, mask = item_cf.profile_from_ratings(ratings)
+    original = item_cf.prediction_damping
+    try:
+        item_cf.prediction_damping = 0.0
+        at_ceiling_off = int((item_cf._raw_score(vec, mask) >= 5.0).sum())
+        item_cf.prediction_damping = 0.5
+        at_ceiling_on = int((item_cf._raw_score(vec, mask) >= 5.0).sum())
+    finally:
+        item_cf.prediction_damping = original
+    assert at_ceiling_on <= at_ceiling_off
