@@ -54,8 +54,9 @@ h1, h2, h3 {letter-spacing: -0.01em;}
   background: rgba(128,128,128,.07); transition: transform .12s ease, border-color .12s ease;}
 .mcard:hover {transform: translateY(-2px); border-color: rgba(229,72,77,.65);}
 .poster {position: relative; flex: 0 0 88px; display:flex; align-items:flex-end; justify-content:flex-start; padding: 8px; color:#fff;}
-.poster .rank {position:absolute; top: 8px; left: 8px; font-weight: 800; font-size: .8rem; padding: 1px 8px;
-  border-radius: 999px; background: rgba(0,0,0,.45);}
+.poster .rank {position:absolute; top: 8px; left: 8px; min-width: 26px; height: 26px; padding: 0 6px; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: .85rem;
+  border-radius: 999px; background: rgba(0,0,0,.5);}
 .poster .year {font-weight: 700; font-size: 1.05rem; text-shadow: 0 1px 6px rgba(0,0,0,.5);}
 .mbody {flex: 1; padding: 12px 14px; min-width: 0;}
 .mtitle {font-weight: 650; font-size: 1.02rem; line-height: 1.25; margin-bottom: 6px; overflow-wrap: anywhere;}
@@ -134,7 +135,7 @@ def movie_card(row: pd.Series, rank: int | None, score_col: str) -> str:
 
     avg = f"{float(row['avg_rating']):.2f}" if _is_number(row.get("avg_rating")) else "n/a"
     n_ratings = int(row["n_ratings"]) if _is_number(row.get("n_ratings")) else 0
-    rank_html = f'<span class="rank">#{rank}</span>' if rank else ""
+    rank_html = f'<span class="rank">{rank}</span>' if rank else ""
 
     return (
         '<div class="mcard">'
