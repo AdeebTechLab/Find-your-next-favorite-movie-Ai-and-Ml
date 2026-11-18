@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-11-16T10:36:08+00:00",
+  "dataset": {
+    "rows_in": 100836,
+    "dropped_missing": 0,
+    "dropped_invalid_rating": 0,
+    "dropped_duplicates": 0,
+    "dropped_unknown_movie": 0,
+    "rows_out": 100836,
+    "n_users": 610,
+    "n_movies": 9724,
+    "n_train": 80672,
+    "n_test": 20164,
+    "matrix_shape": [
+      610,
+      8977
+    ],
+    "sparsity": 0.98527
+  },
+  "config": {
+    "split_strategy": "user_wise",
+    "test_size": 0.2,
+    "seed": 42,
+    "user_k": 50,
+    "item_k": 50,
+    "shrinkage": 10.0,
+    "min_neighbors": 2
+  },
+  "results": [
+    {
+      "model": "User-based CF",
+      "subset": "all predictable",
+      "rmse": 0.8691093791964335,
+      "mae": 0.6600911043067728,
+      "coverage": 0.8461118825629835,
+      "n_predicted": 17061,
+      "n_test": 20164
+    },
+    {
+      "model": "Item-based CF",
+      "subset": "all predictable",
+      "rmse": 0.8298779576536395,
+      "mae": 0.6375964836455217,
+      "coverage": 0.8514679627058124,
+      "n_predicted": 17169,
+      "n_test": 20164
+    },
+    {
+      "model": "Baseline (item mean)",
+      "subset": "all predictable",
+      "rmse": 0.9512612557359996,
+      "mae": 0.7394641408468066,
+      "coverage": 0.95928387224757,
+      "n_predicted": 19343,
+      "n_test": 20164
+    },
+    {
+      "model": "User-based CF",
+      "subset": "common records",
+      "rmse": 0.8549707241977105,
+      "mae": 0.6495690644408305,
+      "coverage": 0.7855088276135688,
+      "n_predicted": 15839,
+      "n_test": 20164
+    },
+    {
+      "model": "Item-based CF",
+      "subset": "common records",
+      "rmse": 0.820542504202648,
+      "mae": 0.6300685149384941,
+      "coverage": 0.7855088276135688,
+      "n_predicted": 15839,
+      "n_test": 20164
+    },
+    {
+      "model": "Baseline (item mean)",
+      "subset": "common records",
+      "rmse": 0.92710035748221,
+      "mae": 0.7200101839866091,
+      "coverage": 0.7855088276135688,
+      "n_predicted": 15839,
+      "n_test": 20164
+    }
+  ]
+}

@@ -1,20 +1,28 @@
-# Movie Recommendation System (Collaborative Filtering)
+# Intelligent Movie Recommendation System
 
-User-based and item-based collaborative filtering on **MovieLens ml-latest-small** (~100k ratings, 610 users, ~9.7k movies), with a Streamlit interface.
+User-based and item-based collaborative filtering on **MovieLens ml-latest-small** (~100k ratings, 610 users, ~9.7k movies), served as a fast static website on **Vercel**.
 
 ## Features
-- Top-10 recommendations for any existing user (user-based or item-based) with predicted rating, genres and average rating
+- Top-10 recommendations for any existing user (user-based, item-based, or side by side) with predicted rating, genres and average rating
 - Similar-movie search (item-item similarity)
-- Cold-start: a new user rates ~5 movies and gets recommendations without being assigned a userId
+- Cold-start: a new user rates 3-5 movies and gets recommendations in the browser, with no account and nothing sent anywhere
 - Evaluation: RMSE, MAE and coverage on a held-out 20%, with a popularity-aware item-mean baseline
 
-## Quick start
+## Deploy on Vercel
+The site is plain HTML/CSS/JS in `public/`, with the trained model exported to `public/data/`. There is no server and no build step.
+
+1. Push this folder to GitHub (or run `vercel` from it with the Vercel CLI).
+2. In Vercel choose **Add New > Project**, import the repo and click **Deploy**. `vercel.json` already sets the output directory to `public` and needs no framework preset, build command or environment variables.
+
+Preview locally: `cd public && python -m http.server 8000`, then open http://localhost:8000.
+
+## Retrain and refresh the website
 ```bash
 pip install -r requirements.txt
 python scripts/download_data.py     # fetches ml-latest-small into data/raw/
 python scripts/explore_data.py      # optional: EDA charts -> reports/eda/
 python scripts/train.py             # split, fit on train only, evaluate, save models + metrics
-streamlit run app/streamlit_app.py
+python scripts/export_static.py     # writes public/data/* used by the website
 pytest                              # tests use synthetic data, no download needed
 ```
 If the download fails (firewall), fetch https://files.grouplens.org/datasets/movielens/ml-latest-small.zip manually and extract it so that `data/raw/ml-latest-small/ratings.csv` exists.
@@ -35,8 +43,9 @@ If the download fails (firewall), fetch https://files.grouplens.org/datasets/mov
 ```
 src/            config, data_loader, matrix_builder, user_based_cf, item_based_cf,
                 cold_start, evaluation, pipeline, utils, exceptions
-app/            streamlit_app.py (UI only, no model logic)
-scripts/        download_data.py, explore_data.py, train.py
+public/         the Vercel site: index.html, assets/ (app.js, engine.js, style.css, logo), data/ (exported model)
+scripts/        download_data.py, explore_data.py, train.py, export_static.py
+vercel.json     Vercel settings (serve public/, cache headers)
 tests/          pytest suite (synthetic data with planted taste groups)
 models/ reports/ data/
 ```

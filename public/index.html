@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Intelligent Movie Recommendation System</title>
+  <meta name="description" content="Personalised movie recommendations from the rating behaviour of 610 viewers, using user-based and item-based collaborative filtering.">
+  <meta name="theme-color" content="#0e1120">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <meta property="og:title" content="Intelligent Movie Recommendation System">
+  <meta property="og:description" content="Find your next favourite movie with collaborative filtering.">
+  <meta property="og:image" content="/assets/logo-512.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Fonts load in the background so a slow connection never blocks the page -->
+  <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap"></noscript>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <a class="skip" href="#app">Skip to content</a>
+  <div class="shell">
+    <aside class="side">
+      <a class="brand" href="#/" aria-label="Intelligent Movie Recommendation System, home">
+        <img src="/assets/logo.svg" width="44" height="44" alt="">
+        <span class="brand-name"><b>Intelligent</b> Movie Recommendation System</span>
+      </a>
+      <nav class="nav" id="nav" aria-label="Main">
+        <a href="#/" data-route="home"><i>🏠</i>Home</a>
+        <a href="#/recommend" data-route="recommend"><i>🎯</i>Recommend</a>
+        <a href="#/similar" data-route="similar"><i>🎞️</i>Similar movies</a>
+        <a href="#/new" data-route="new"><i>🆕</i>New user</a>
+        <a href="#/performance" data-route="performance"><i>📊</i>Model performance</a>
+        <a href="#/about" data-route="about"><i>ℹ️</i>About</a>
+      </nav>
+      <p class="side-foot">Data: MovieLens ml-latest-small, GroupLens Research</p>
+    </aside>
+    <main id="app" tabindex="-1">
+      <p class="loading">Loading the model…</p>
+      <noscript><p>This site needs JavaScript to show recommendations.</p></noscript>
+    </main>
+  </div>
+  <script type="module" src="/assets/app.js"></script>
+</body>
+</html>
