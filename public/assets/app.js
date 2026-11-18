@@ -34,29 +34,36 @@ function loadNeighbors() {
 }
 
 // ------------------------------------------------------------------ movie rendering
-function hueOf(genres) {
-  const first = (genres.split("|")[0] || "").trim();
+function hue(text) {
   let h = 0;
-  for (const c of first) h = (h * 31 + c.charCodeAt(0)) % 360;
-  return h;
+  for (const c of String(text)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return h % 360;
 }
-/** rows: [[position, score], ...]. mode: "rating" shows stars, "similarity" shows the number. */
+const SCORE_KINDS = {
+  rating: ["Predicted", (v) => `★ ${v.toFixed(2)}`, (v) => v / 5],
+  yours: ["You rated", (v) => `★ ${v.toFixed(1)}`, (v) => v / 5],
+  similarity: ["Match", (v) => `${(v * 100).toFixed(0)}%`, (v) => v],
+};
+/** rows: [[position, score], ...]. mode: rating | yours | similarity. */
 function cards(rows, { mode = "rating", numbered = true, compact = false } = {}) {
-  if (!rows.length) return `<div class="empty">Nothing to show here yet.</div>`;
+  if (!rows.length) return `<div class="empty">No results to show for this request.</div>`;
+  const [label, fmtScore, frac] = SCORE_KINDS[mode];
   const body = rows.map(([p, score], i) => {
     const { title, year } = splitTitle(D.cat.title[p]);
-    const genres = D.cat.genres[p].split("|").filter((g) => g !== "(no genres listed)").slice(0, 3);
-    const label = mode === "similarity" ? "similarity" : mode === "yours" ? "your rating" : "predicted";
-    const value = mode === "similarity" ? score.toFixed(2) : score.toFixed(1);
-    const avg = D.cat.avg[p] ? `avg ${D.cat.avg[p].toFixed(2)} from ${fmt(D.cat.n[p])} ratings` : "";
-    return `<article class="card" style="--hue:${hueOf(D.cat.genres[p])}">
-      <div class="rank">${i + 1}</div>
-      <div><div class="t">${esc(title)}${year ? `<span class="y">${year}</span>` : ""}</div>
-        <div class="g">${genres.map((g) => `<span class="tag">${esc(g)}</span>`).join("")}</div></div>
-      <div class="s"><div class="sv">${value}</div>${mode !== "similarity" ? stars(score) : ""}<div class="sd">${label}<br>${avg}</div></div>
-    </article>`;
+    const h = hue(D.cat.title[p]);
+    const genres = D.cat.genres[p].split("|").filter((g) => g && g !== "(no genres listed)").slice(0, 3);
+    const width = Math.max(0, Math.min(1, frac(score))) * 100;
+    const avg = D.cat.avg[p] ? D.cat.avg[p].toFixed(2) : "n/a";
+    return `<div class="mcard">
+      <div class="poster" style="background:linear-gradient(145deg,hsl(${h},58%,38%),hsl(${(h + 40) % 360},55%,16%))">${numbered ? `<span class="rank">${i + 1}</span>` : ""}<span class="year">${esc(year)}</span></div>
+      <div class="mbody"><div class="mtitle">${esc(title)}</div>
+        <div class="chips">${genres.map((g) => `<span class="chip" style="--h:${hue(g)}">${esc(g)}</span>`).join("")}</div>
+        <div class="score"><span class="lbl">${label}</span><span class="val">${fmtScore(score)}</span></div>
+        <div class="bar"><i style="width:${width.toFixed(0)}%"></i></div>
+        <div class="sub">Avg rating ${avg} &middot; ${fmt(D.cat.n[p])} ratings</div></div>
+    </div>`;
   }).join("");
-  return `<div class="cards${compact ? " compact" : ""}${numbered ? "" : " plain"}">${body}</div>`;
+  return `<div class="grid${compact ? " compact" : ""}">${body}</div>`;
 }
 function csvButton(id, rows, scoreName) {
   return `<button class="btn ghost" id="${id}" type="button">Download as CSV</button>`;
@@ -74,7 +81,7 @@ function wireCsv(id, rows, scoreName, filename) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 }
-const kpis = (items) => `<div class="kpis">${items.map(([l, v, d]) => `<div class="kpi"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div><div class="d">${esc(d)}</div></div>`).join("")}</div>`;
+const kpis = (items) => `<div class="kpis">${items.map(([l, v, d]) => `<div class="kpi"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div><div class="hint">${esc(d)}</div></div>`).join("")}</div>`;
 
 // ------------------------------------------------------------------ movie search combobox
 function movieSearch(host, { placeholder, minRatings = 50, onPick, clear = false, id }) {
@@ -128,30 +135,34 @@ function pageHome() {
   const m = D.metrics?.dataset;
   const nUsers = Object.keys(D.users).length;
   app.innerHTML = `
-    <section class="hero rise">
+    <div class="hero">
       <h1>Find your next favourite movie</h1>
-      <p class="sub">Name a movie you love and we show what people with the same taste went on to enjoy. Recommendations come from the ratings of ${fmt(nUsers)} viewers.</p>
-      <div id="hero-search"></div>
-      <div class="chips" id="hero-chips" aria-label="Try one of these"></div>
-      <div id="hero-out" aria-live="polite"></div>
-    </section>
+      <p>Personalised recommendations built from the rating behaviour of hundreds of viewers, using user-based and item-based collaborative filtering.</p>
+      ${["MovieLens ml-latest-small", "User-based CF", "Item-based CF", "Cold-start support", "RMSE / MAE evaluated"].map((x) => `<span class="pill">${x}</span>`).join("")}
+    </div>
     ${kpis([
-      ["Viewers", fmt(nUsers), "in the training data"],
+      ["Users", fmt(nUsers), "in the training data"],
       ["Movies", fmt(D.cat.id.length), "in the rating matrix"],
       ["Training ratings", m ? fmt(m.n_train) : "n/a", "80% of all ratings"],
       ["Matrix sparsity", m ? (m.sparsity * 100).toFixed(1) + "%" : "n/a", "cells with no rating"],
     ])}
     <h2>How it works</h2>
-    <ol class="steps">
-      <li><b>Learn from ratings</b><span>Each person's ratings are compared with everyone else's to find similar tastes, or similar movies.</span></li>
-      <li><b>Predict what you would rate</b><span>Ratings from your closest neighbours are averaged, weighted by how similar they are to you.</span></li>
-      <li><b>Rank unseen movies</b><span>Movies you already rated are removed. The highest predicted ones become your top picks.</span></li>
-    </ol>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><b>Learn from ratings</b><span>Each person's ratings are compared with everyone else's to find similar tastes (or similar movies).</span></div>
+      <div class="step"><div class="n">2</div><b>Predict what you would rate</b><span>Ratings from your closest neighbours are averaged, weighted by how similar they are to you.</span></div>
+      <div class="step"><div class="n">3</div><b>Rank unseen movies</b><span>Movies you already rated are removed and the highest predicted ones become your top picks.</span></div>
+    </div>
+    <div class="quick">
+      <h2>Try it: name a movie you love</h2>
+      <div id="hero-search"></div>
+      <div class="chips" id="hero-chips" aria-label="Try one of these"></div>
+      <div id="hero-out" aria-live="polite"></div>
+    </div>
     <h2>Start here</h2>
     <div class="cta-row">
-      <a class="btn" href="#/recommend">Recommendations for a viewer</a>
-      <a class="btn ghost" href="#/similar">Find similar movies</a>
-      <a class="btn ghost" href="#/new">I'm a new user</a>
+      <a class="btn" href="#/recommend">🎯  Recommendations for a user</a>
+      <a class="btn ghost" href="#/similar">🎞️  Find similar movies</a>
+      <a class="btn ghost" href="#/new">🆕  I'm a new user</a>
     </div>`;
   const out = $("#hero-out");
   const show = async (p) => {
@@ -160,12 +171,12 @@ function pageHome() {
       await loadNeighbors();
     } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}. Check your connection and try again.</div>`; return; }
     const rows = similarMovies(D.cat, D.nb, p, 6);
-    out.innerHTML = `<h2>Because you like ${esc(splitTitle(D.cat.title[p]).title)}</h2>${cards(rows, { mode: "similarity", compact: true })}
+    out.innerHTML = `<h3>Because you like ${esc(splitTitle(D.cat.title[p]).title)}</h3>${cards(rows, { mode: "similarity" })}
       <p><a href="#/similar">See more similar movies</a></p>`;
     out.firstElementChild.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   };
   movieSearch($("#hero-search"), { id: "hs", placeholder: "Type a movie, for example Toy Story", onPick: show });
-  $("#hero-chips").innerHTML = D.cat.byPopularity.slice(0, 5).map((p) => `<button class="chip" type="button" data-p="${p}">${esc(splitTitle(D.cat.title[p]).title)}</button>`).join("");
+  $("#hero-chips").innerHTML = D.cat.byPopularity.slice(0, 5).map((p) => `<button class="chip" style="--h:350" type="button" data-p="${p}">${esc(splitTitle(D.cat.title[p]).title)}</button>`).join("");
   $("#hero-chips").onclick = (e) => { const b = e.target.closest("[data-p]"); if (b) { $("#hs").value = b.textContent; show(+b.dataset.p); } };
   loadNeighbors().catch(() => {});
 }
@@ -297,7 +308,7 @@ function pagePerformance() {
   const bars = (key) => {
     const top = Math.max(...common.map((r) => r[key])) * 1.1;
     const bestKey = common.reduce((a, b) => (b[key] < a[key] ? b : a)).model;
-    return `<div class="bars">${common.map((r) => `<div class="bar${r.model === bestKey ? " best" : ""}"><span>${esc(r.model)}</span><div class="track"><div class="fill" style="width:${(r[key] / top) * 100}%"></div></div><span class="val">${r[key].toFixed(3)}</span></div>`).join("")}</div>`;
+    return `<div class="hbars">${common.map((r) => `<div class="hbar${r.model === bestKey ? " best" : ""}"><span>${esc(r.model)}</span><div class="track"><div class="fill" style="width:${(r[key] / top) * 100}%"></div></div><span class="val">${r[key].toFixed(3)}</span></div>`).join("")}</div>`;
   };
   const cols = ["model", "subset", "rmse", "mae", "coverage", "n_predicted", "n_test"];
   app.innerHTML = `
